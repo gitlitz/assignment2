@@ -35,7 +35,8 @@ def distance_to_color():
 	color_input = raw_input("Enter color: ")
 	print(color_input)
     
-	image_sub = rospy.Subscriber("/camera/image_raw", Image, callback, (color_input))
+	image_sub = rospy.Subscriber("/camera/image_raw", Image, callback3, (color_input))
+        rospy.spin()
 
 
 def callback3( image, color ):
@@ -82,4 +83,10 @@ def callback3( image, color ):
 	print( cX, cY )
 	return ( cX, cY )
 
+def main():
+    rospy.init_node('cnc', anonymous=True)
+    while True:
+        distance_to_color()
 
+if __name__ == '__main__':
+    main()
