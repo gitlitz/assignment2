@@ -1,4 +1,5 @@
 #!/usr/bin/python
+import random
 import time
 import math
 import logging
@@ -16,8 +17,7 @@ USAGE = """Enter task number:
 3 - Distance to object with color X
 4 - Find object with color X"""
 
-# TODO CAMERA_FOV = 1.3962634 * 180 / math.pi  # based on turtlebot3_burger_cam.gazebo.xacro
-CAMERA_FOV = 1.3962634 # based on turtlebot3_burger_cam.gazebo.xacro
+CAMERA_FOV = 1.3962634  # based on turtlebot3_burger_cam.gazebo.xacro
 
 COLOR_THRESHOLDS = {
     "red": [np.array([0, 50, 50]), np.array([15, 255, 255])],
@@ -25,15 +25,38 @@ COLOR_THRESHOLDS = {
     "blue": [np.array([90, 50, 50]), np.array([120, 255, 255])]
 }
 
-
-def distance_to_front():
-    data = rospy.wait_for_message("/scan", LaserScan)
-    center = data.ranges[0]
-    print("distance to center: " + str(center))
-    return center
+# Implementation of the available commands
 
 
-def move_forward():
+def command_find_object():
+    velocity_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
+    color = raw_input("What color do you want to find? ")
+    angle = angle_to_color(color)
+
+    vel_msg = Twist()
+
+    vel_msg.linear.x = 0
+    vel_msg.linear.y = 0
+    vel_msg.linear.z = 0
+    vel_msg.angular.x = 0
+    vel_msg.angular.y = 0
+    vel_msg.angular.z = 0
+
+    while angle is None:
+        vel_msg.linear.x = random.random() - 0.5
+        vel_msg.angular.z = random.random() - 0.5
+        velocity_publisher.publish(vel_msg)
+        angle = angle_to_color(color)
+
+    vel_msg.linear.x = 0
+    vel_msg.angular.z = 0
+    velocity_publisher.publish(vel_msg)
+
+    turn_robot(angle)
+    command_move_forward()
+
+
+def command_move_forward():
     pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
     while distance_to_front() > 0.5:
         msg = Twist()
@@ -45,7 +68,7 @@ def move_forward():
     pub.publish(msg)
 
 
-def turn_around():
+def command_turn_around():
     raw = raw_input("Enter how many degrees you want to turn: ")
     try:
         angle = float(raw)
@@ -53,6 +76,26 @@ def turn_around():
         print("Error: {} is not a valid number: ".format(raw))
         return
 
+    return turn_robot(angle)
+
+
+def command_distance_to_color():
+    color = raw_input("What color do you want to find the distance to? ")
+    angle = angle_to_color(color)
+    if angle is None:
+        return None
+
+    int_angle = int(angle)
+    data = rospy.wait_for_message("/scan", LaserScan)
+    print(data.ranges[-int_angle])  # for some reason, LaserScan goes the opposite way
+
+# helper functions
+
+
+def turn_robot(angle):
+    """
+    turn the robot by a given angle in degrees
+    """
     angular_speed = 2.5
     relative_angle = angle * 2 * math.pi / 360
 
@@ -67,7 +110,7 @@ def turn_around():
 
     # Checking if our movement is CW or CCW
     vel_msg.angular.z = angular_speed
-    if angle < 0:
+    if angle > 0:
         vel_msg.angular.z = -angular_speed
     # Setting the current time for distance calculus
     t0 = rospy.Time.now().to_sec()
@@ -75,16 +118,12 @@ def turn_around():
 
     while abs(current_angle) < abs(relative_angle):
         velocity_publisher.publish(vel_msg)
-        time.sleep(0.01)  # todo: constants
+        time.sleep(0.01)
         t1 = rospy.Time.now().to_sec()
         current_angle = angular_speed * (t1 - t0)
 
     vel_msg.angular.z = 0
     velocity_publisher.publish(vel_msg)
-
-
-def distance_to_color():
-    pass
 
 
 def angle_to_color(color):
@@ -116,18 +155,24 @@ def angle_to_color(color):
     # convert to degrees
     return angle * 180 / math.pi
 
-def find_object():
-    print(angle_to_color("green"))
+
+def distance_to_front():
+    """
+    :return:  how far the robot is from the object in front of it, in meters
+    """
+    data = rospy.wait_for_message("/scan", LaserScan)
+    center = data.ranges[0]
+    return center
 
 
 def main():
     rospy.init_node('cnc', anonymous=True)
 
     tasks_dict = {
-        "1": move_forward,
-        "2": turn_around,
-        "3": distance_to_color,
-        "4": find_object
+        "1": command_move_forward,
+        "2": command_turn_around,
+        "3": command_distance_to_color,
+        "4": command_find_object
     }
 
     while True:
