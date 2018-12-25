@@ -17,7 +17,7 @@ USAGE = """Enter task number:
 3 - Distance to object with color X
 4 - Find object with color X"""
 
-CAMERA_FOV = 1.3962634  # based on turtlebot3_burger_cam.gazebo.xacro
+CAMERA_FOV = 1.0472  # based on turtlebot3_burger_cam.gazebo.xacro
 
 COLOR_THRESHOLDS = {
     "red": [np.array([0, 50, 50]), np.array([15, 255, 255])],
@@ -60,7 +60,7 @@ def command_move_forward():
     pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
     while distance_to_front() > 0.5:
         msg = Twist()
-        msg.linear.x = 0.4
+        msg.linear.x = 0.1
         pub.publish(msg)
 
     msg = Twist()
@@ -96,7 +96,7 @@ def turn_robot(angle):
     """
     turn the robot by a given angle in degrees
     """
-    angular_speed = 2.5
+    angular_speed = 0.2
     relative_angle = angle * 2 * math.pi / 360
 
     velocity_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
@@ -130,7 +130,7 @@ def angle_to_color(color):
     """
     :return: the angle to the center of an object in the given color. None if no object is available for the camera
     """
-    image = rospy.wait_for_message("/camera/image_raw", Image)
+    image = rospy.wait_for_message("/usb_cam/image_raw", Image)
     bridge = CvBridge()
     cv_image = bridge.imgmsg_to_cv2(image, "bgr8")
 
