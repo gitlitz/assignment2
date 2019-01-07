@@ -21,16 +21,19 @@ CAMERA_FOV = 1.0472  # based on turtlebot3_burger_cam.gazebo.xacro
 
 COLOR_THRESHOLDS = {
     "red": [np.array([0, 50, 50]), np.array([15, 255, 255])],
-    "green": [np.array([60, 50, 50]), np.array([90, 255, 255])],
-    "blue": [np.array([90, 50, 50]), np.array([120, 255, 255])]
+    "green": [np.array([58, 50, 50]), np.array([67, 200, 150])],
+    "blue": [np.array([100, 50, 0]), np.array([110, 200, 200])]
 }
 
 # Implementation of the available commands
 
 
 def command_find_object():
-    velocity_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
     color = raw_input("What color do you want to find? ")
+    find_object(color)
+
+def find_object(color):
+    velocity_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
     angle = angle_to_color(color)
 
     vel_msg = Twist()
@@ -43,8 +46,12 @@ def command_find_object():
     vel_msg.angular.z = 0
 
     while angle is None:
-        vel_msg.linear.x = random.random() - 0.5
+        vel_msg.linear.x = (random.random() - 0.5) *0.25*0.25
         vel_msg.angular.z = random.random() - 0.5
+        if distance_to_front() <= 0.01:
+            turn_robot(45)
+            vel_msg.linear.x = -abs(vel_msg.linear.x)
+            
         velocity_publisher.publish(vel_msg)
         angle = angle_to_color(color)
 
@@ -54,6 +61,11 @@ def command_find_object():
 
     turn_robot(angle)
     command_move_forward()
+    distance = distance_to_color(color)
+    if distance is None or distance > 0.5:
+        #turn_robot(45)
+        find_object(color)
+
 
 
 def command_move_forward():
@@ -81,6 +93,10 @@ def command_turn_around():
 
 def command_distance_to_color():
     color = raw_input("What color do you want to find the distance to? ")
+    print(distance_to_color(color))
+
+
+def distance_to_color(color):
     angle = angle_to_color(color)
     if angle is None:
         return None
@@ -88,6 +104,7 @@ def command_distance_to_color():
     int_angle = int(angle)
     data = rospy.wait_for_message("/scan", LaserScan)
     print(data.ranges[-int_angle])  # for some reason, LaserScan goes the opposite way
+    return data.ranges[-int_angle]
 
 # helper functions
 
@@ -133,6 +150,7 @@ def angle_to_color(color):
     image = rospy.wait_for_message("/usb_cam/image_raw", Image)
     bridge = CvBridge()
     cv_image = bridge.imgmsg_to_cv2(image, "bgr8")
+    cv2.imwrite("/tmp/image.jpg", cv_image)
 
     hsv_img = cv2.cvtColor(cv_image, cv2.COLOR_BGR2HSV)
     if color not in COLOR_THRESHOLDS:
@@ -161,7 +179,7 @@ def distance_to_front():
     :return:  how far the robot is from the object in front of it, in meters
     """
     data = rospy.wait_for_message("/scan", LaserScan)
-    center = data.ranges[0]
+    center = min(data.ranges[::10] + data.ranges[-10::])
     return center
 
 
