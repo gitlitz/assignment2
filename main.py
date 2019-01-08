@@ -34,7 +34,6 @@ def command_find_object():
 
 def find_object(color):
     velocity_publisher = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
-    angle = angle_to_color(color)
 
     vel_msg = Twist()
 
@@ -45,26 +44,19 @@ def find_object(color):
     vel_msg.angular.y = 0
     vel_msg.angular.z = 0
 
-    while angle is None:
-        vel_msg.linear.x = (random.random() - 0.5) *0.25*0.25
+
+    distance = distance_to_color(color)
+
+    while distance is None or distance > 0.5:
+        vel_msg.linear.x = (random.random() - 0.5) *0.25*0.5
         vel_msg.angular.z = random.random() - 0.5
-        if distance_to_front() <= 0.01:
-            turn_robot(45)
-            vel_msg.linear.x = -abs(vel_msg.linear.x)
             
         velocity_publisher.publish(vel_msg)
-        angle = angle_to_color(color)
+        distance = distance_to_color(color)
 
     vel_msg.linear.x = 0
     vel_msg.angular.z = 0
     velocity_publisher.publish(vel_msg)
-
-    turn_robot(angle)
-    command_move_forward()
-    distance = distance_to_color(color)
-    if distance is None or distance > 0.5:
-        #turn_robot(45)
-        find_object(color)
 
 
 
@@ -102,6 +94,7 @@ def distance_to_color(color):
         return None
 
     int_angle = int(angle)
+    print(int_angle)
     data = rospy.wait_for_message("/scan", LaserScan)
     print(data.ranges[-int_angle])  # for some reason, LaserScan goes the opposite way
     return data.ranges[-int_angle]

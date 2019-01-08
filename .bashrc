@@ -117,7 +117,6 @@ if ! shopt -oq posix; then
 fi
 # ROS
 source /opt/ros/kinetic/setup.bash
-source /home/gitlitz/Documents/robotics/catkin_ws/devel/setup.bash
-export ROS_MASTER_URI=http://10.42.0.1:11311
-export ROS_HOSTNAME=10.42.0.1
+export ROS_MASTER_URI=http://192.168.43.90:11311
+export ROS_HOSTNAME=192.168.43.90
 export TURTLEBOT3_MODEL=burger
